@@ -11,8 +11,8 @@
 ## Запуск backend
 Сначала проверьте версии `npm` и `node`
 ```powershell
-node --version # v22.20.0 или более
-npm --version # 11.6.4 или более
+node --version # v26.12.0
+npm --version # 11.20.0
 ```
 
 Если всё установлено, можно продолжать
