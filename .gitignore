@@ -1,9 +1,12 @@
 # Node
-*node_modules/
+**/node_modules/
 
 # Env
 .env
+.env.production
 
-# IDE
-*.vscode/
-*.idea/
+# IDE and system files
+.vscode/
+.idea/
+.DS_Store
+*.suo
