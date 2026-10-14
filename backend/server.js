@@ -22,6 +22,7 @@ createServer((request, response) => {
     }
     response.end('ping');
 
-}).listen(port, '127.0.0.1', function () {
-    console.log('server on http://127.0.0.1:3001')
+}).listen(port, '0.0.0.0', function () {
+    console.log('server on Local: http://127.0.0.1:3001')
+    console.log('server on LAN: http://<ipv4>:3001')
 });
