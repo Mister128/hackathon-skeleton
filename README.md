@@ -9,6 +9,14 @@
     - npm: 11.6.4 (обычно в комплекте с node)
 
 ## Запуск backend
+Сначала проверьте версии `npm` и `node`
+```powershell
+node --version # v22.20.0 или более
+npm --version # 11.6.4 или более
+```
+
+Если всё установлено, можно продолжать
+
 ```powershell
 cd ./backend/ # Если ещё не перешёл
 npm install
@@ -18,7 +26,7 @@ npm run start
 
 ### Проверка работоспособности сервера:
 ```powershell
-curl http://127.0.0.1:3001/health
+curl http://127.0.0.1:3001/health # в отдельном терминале
 ```
 ИЛИ
 
