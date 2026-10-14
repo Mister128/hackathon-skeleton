@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Node.js Server</title>
+</head>
+
+<body>
+    <button onclick="getText('/health')">fetch</button>
+    <div id="textContent"></div>
+    <script>
+        async function getText(url) {
+            const textContent = document.getElementById('textContent');
+            try {
+                const req = new Request(`${url}`);
+                const res = await fetch(req);
+
+                if (!res.ok) throw Error('HTTP error');
+
+                const text = await res.text();
+                textContent.innerHTML = text;
+            } catch (err) {
+                textContent.innerHTML = 'Ошибка: ' + err.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
