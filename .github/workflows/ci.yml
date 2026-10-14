@@ -33,8 +33,8 @@ jobs:
             sleep 5s
             curl -f http://127.0.0.1:$PORT/health | grep '"ok":true'
           working-directory: backend
-          env:
-            PORT: 8080
         
         - if: failure()
           run: cat backend/server.log
+env:
+    PORT: 8080
