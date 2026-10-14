@@ -20,16 +20,21 @@ jobs:
           with:
             node-version: '26.x'
 
-        - run: node --version
-        - run: npm --version
+        - run: | 
+            node --version
+            npm --version
+        
         - run: npm ci
           working-directory: backend
-        - run: npm start > /dev/null 2>&1 &
+        
+        - run: |
+            npm start > server.log 2>&1 & 
+            SERVER_PID=$!
+            sleep 5s
+            curl -f http://127.0.0.1:$PORT/health | grep '"ok":true'
           working-directory: backend
-        - run: sleep 5s
-        - run: curl -f http://127.0.0.1:${{env.PORT}}/health | grep '"ok":true'
-          
-        - run: npx kill-port ${{env.PORT}}
-
-env:
-    PORT: 3001
+          env:
+            PORT: 8080
+        
+        - if: failure()
+          run: cat backend/server.log

@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
 
-const port = 3001;
+const port = process.env.PORT;
 
 createServer((request, response) => {
     if (request.method === 'GET' && request.url === "/health") {
@@ -23,6 +23,6 @@ createServer((request, response) => {
     response.end('ping');
 
 }).listen(port, '0.0.0.0', function () {
-    console.log('server on Local: http://127.0.0.1:3001')
-    console.log('server on LAN: http://<ipv4>:3001')
+    console.log(`server on Local: http://127.0.0.1:${port}`)
+    console.log(`server on LAN: http://<ipv4>:${port}`)
 });
