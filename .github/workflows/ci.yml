@@ -1,0 +1,29 @@
+name: backend life
+
+on:
+    push:
+        branches: [ main, master ]
+
+    pull_request: 
+        branches: [ main, master ]
+    
+
+jobs:
+    build:
+        runs-on: windows-latest
+        steps:
+        - name: Checkout repo
+          uses: actions/checkout@v6
+        
+        - name: Use Node.js
+          uses: actions/setup-node@v7
+          with:
+            node-version: '26.x'
+
+        - run: node --version
+        - run: npm --version
+        
+
+
+
+    
