@@ -24,11 +24,13 @@ jobs:
         - run: npm --version
         - run: npm ci
           working-directory: backend
-        - run: npm start & echo "PID=$!" >> $GITHUB_ENV
+        - run: npm start > /dev/null 2>&1 
           background: true
           working-directory: backend
         - run: sleep 5s
         - run: curl -f http://127.0.0.1:${{env.PORT}}/health | grep '"ok":true'
-          env:
-            PORT: 3001
-        - run: kill ${PID}
+          
+        - run: npx kill-port ${{env.PORT}}
+
+env:
+    PORT: 3001
