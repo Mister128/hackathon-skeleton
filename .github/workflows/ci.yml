@@ -1,4 +1,4 @@
-name: backend life
+name: backend and frontend life
 
 on:
     push:
@@ -9,7 +9,7 @@ on:
     
 
 jobs:
-    build:
+    backend:
         runs-on: ubuntu-latest
         steps:
         - name: Checkout repo
@@ -37,5 +37,32 @@ jobs:
         
         - if: failure()
           run: cat backend/server.log
+    
+    frontend:
+      runs-on: ubuntu-latest
+      steps:
+        - name: Checkout repo
+          uses: actions/checkout@v6
+        
+        - name: Use Node.js
+          uses: actions/setup-node@v7
+          with:
+            node-version: '26.x'
+
+        - run: | 
+            node --version
+            npm --version
+
+        - run: | 
+            npm ci
+            npm run build
+          working-directory: frontend
+        
+        - name: Upload
+          uses: actions/upload-artifact@v6
+          with:
+            name: frontend-dist
+            path: frontend/dist
+
 env:
     PORT: 8080
