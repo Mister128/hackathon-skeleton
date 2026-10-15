@@ -1,7 +1,7 @@
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
 
-const port = process.env.PORT;
+const port = process.env.PORT || 3001;
 
 createServer((request, response) => {
     if (request.method === 'GET' && request.url === "/health") {
