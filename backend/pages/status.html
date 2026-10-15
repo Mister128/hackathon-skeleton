@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Node.js Server</title>
+</head>
+
+<body>
+    <style>
+        body {
+            background: #111;
+            color: #eee;
+            font-family: system-ui;
+        }
+
+        button {
+            background: #2c7;
+            color: #111;
+            border: 0;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        #textContent {
+            margin-top: 12px;
+            padding: 8px;
+            background: #000;
+            font-family: monospace;
+            border: 1px solid #333;
+        }
+    </style>
+    <main>
+        <button onclick="getText('/health')">fetch</button>
+        <div id="textContent"></div>
+    </main>
+    <script>
+        async function getText(url) {
+            const textContent = document.getElementById('textContent');
+            try {
+                const req = new Request(`${url}`);
+                const res = await fetch(req);
+
+                if (!res.ok) throw Error('HTTP error');
+
+                const text = await res.text();
+                textContent.innerHTML = text;
+            } catch (err) {
+                textContent.innerHTML = 'Ошибка: ' + err.message;
+            }
+        }
+    </script>
+</body>
+
+</html>
