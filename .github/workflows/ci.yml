@@ -37,7 +37,10 @@ jobs:
         
         - if: failure()
           run: cat backend/server.log
-    
+
+        env:
+          PORT: 8080
+ 
     frontend:
       runs-on: ubuntu-latest
       steps:
@@ -55,7 +58,6 @@ jobs:
 
         - run: | 
             npm ci
-            npm run build
           working-directory: frontend
         
         - name: Upload
@@ -63,6 +65,4 @@ jobs:
           with:
             name: frontend-dist
             path: frontend/dist
-
-env:
-    PORT: 8080
+            if-no-files-found: error
