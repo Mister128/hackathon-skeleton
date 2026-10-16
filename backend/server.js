@@ -12,7 +12,8 @@ const port = process.env.PORT || 8080;
 
 // NOTE: Перенеси контракт /health в Yjs 
 // (или что ты выберешь) для проверки CI
-// /status как захотишь
+// /status как захотишь. Так челики смогут 
+// проверять статус сервака не отрывая тебя
 
 createServer((request, response) => {
     if (request.method === 'GET' && request.url === "/health") {

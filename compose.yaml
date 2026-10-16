@@ -1,0 +1,26 @@
+services:
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    expose:
+      - "8080"
+    healthcheck:
+      test: [ "CMD", "wget", "-O -", "http://127.0.0.1:8080/health" ]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    environment:
+      - PORT=8080
+
+  # web: when we have frontend
+
+  tunnel:
+    image: cloudpub/cloudpub:latest
+    restart: unless-stopped
+    environment:
+      - TOKEN=${CLOUDPUB_TOKEN}
+      - HTTP=backend:8080 # add late: web:3001,
+    command: run
+    depends_on:
+      - backend

@@ -33,10 +33,9 @@ BIND = «куда втыкаю вилку». CALL = «кому я звоню».
 Пересеаться по именам они не должны.
 
 ## Быстрый старт
-PowerShell, в каждой папке своя копия примера:
+Для сервера есть .env.example. Откопируй .env.example в .env
 ```powershell
 cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
 ```
 
 Запуск - см. [BACKEND_README](./BACKEND_README.md) и [UI_README](./UI_README.md)
