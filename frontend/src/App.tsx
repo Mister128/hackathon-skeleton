@@ -9,6 +9,7 @@ function App() {
 
   return (
     <>
+    {/* Оставлю чтоб ты мог поиграться. Потом дам задание одно */}
       <section id="center">
         <div className="hero">
           <img src={heroImg} className="base" width="170" height="179" alt="" />

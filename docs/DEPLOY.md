@@ -31,7 +31,7 @@ docker compose logs tunnel
 
 ```bash
 cp .env.example .env      # CLOUDPUB_TOKEN
-docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --build # проверить бы эту строку
 docker compose ps
 curl -I http://localhost/          # web отвечает
 curl http://localhost/health        # nginx проксирует на бэкенд
