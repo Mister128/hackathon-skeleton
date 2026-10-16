@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
-
+import { getLocalIp } from './ip.js';
 /** 
  * 
  * ENV проверяется в package.json.
@@ -9,6 +9,10 @@ import { readFileSync } from 'fs';
  * по умолчанию порт 8080
 */
 const port = process.env.PORT || 8080;
+
+// проверка докера. если он в докере -> не будет писать некоторые логи
+// которые могут сбить с толку
+const inContainer = process.env.IN_DOCKER === 'true';
 
 // NOTE: Перенеси контракт /health в Yjs 
 // (или что ты выберешь) для проверки CI
@@ -39,9 +43,25 @@ createServer((request, response) => {
     }
     response.end('ping');
 
-// 0.0.0.0 даёт доступ подключится по LAN
+    // 0.0.0.0 даёт доступ подключится по LAN
 }).listen(port, '0.0.0.0', function () {
     console.log(`server on Local: http://127.0.0.1:${port}`)
-    console.log(`server on LAN: http://<ipv4>:${port}`)
     console.log(`To check status: http://127.0.0.1:${port}/status`)
+
+    if (inContainer) {
+        console.log(
+            `NOTE: local is not available from the host browser when it's in docker. 
+            please check 'docker compose logs tunnel' to find url to visit`
+        )
+    }
+
+    // не спрашивай про !!, я фиг знает. Оно работает и не трогай
+    if (!inContainer) {
+        const ip = getLocalIp();
+        if (ip != null) {
+            console.log(`server on LAN: http://${ip}:${port}`)
+        } else {
+            console.warn('LAN IP is not define. Idk why')
+        }
+    }
 });
