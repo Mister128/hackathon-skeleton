@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
-import { getLocalIp } from './ip.js';
+import { getLocalIps } from './ip.js';
 /** 
  * 
  * ENV проверяется в package.json.
@@ -45,8 +45,7 @@ createServer((request, response) => {
 
     // 0.0.0.0 даёт доступ подключится по LAN
 }).listen(port, '0.0.0.0', function () {
-    console.log(`server on Local: http://127.0.0.1:${port}`)
-    console.log(`To check status: http://127.0.0.1:${port}/status`)
+    console.log(` ->  Local: http://127.0.0.1:${port}`)
 
     if (inContainer) {
         console.log(
@@ -57,11 +56,15 @@ createServer((request, response) => {
 
     // не спрашивай про !!, я фиг знает. Оно работает и не трогай
     if (!inContainer) {
-        const ip = getLocalIp();
-        if (ip != null) {
-            console.log(`server on LAN: http://${ip}:${port}`)
+        const interfaces = getLocalIps();
+        if (interfaces != null) {
+            interfaces.forEach(interfaceIp => {
+                console.log(` ->  Network: http://${interfaceIp.ip}:${port} # ${interfaceIp.interfaceName}`)
+            });
         } else {
             console.warn('LAN IP is not define. Idk why')
         }
     }
+
+    console.log(`\n ->  To check status: http://127.0.0.1:${port}/status`)
 });
