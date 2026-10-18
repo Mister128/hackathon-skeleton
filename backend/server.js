@@ -1,6 +1,6 @@
 import { createServer } from 'http';
 import { readFileSync } from 'fs';
-import { getLocalIps } from './ip.js';
+import { getLocalIps } from './ips.js';
 /** 
  * 
  * ENV проверяется в package.json.
@@ -13,6 +13,8 @@ const port = process.env.PORT || 8080;
 // проверка докера. если он в докере -> не будет писать некоторые логи
 // которые могут сбить с толку
 const inContainer = process.env.IN_DOCKER === 'true';
+
+const inCI = process.env.CI === 'true'
 
 // NOTE: Перенеси контракт /health в Yjs 
 // (или что ты выберешь) для проверки CI
@@ -55,7 +57,7 @@ createServer((request, response) => {
     }
 
     // не спрашивай про !!, я фиг знает. Оно работает и не трогай
-    if (!inContainer) {
+    if (!inContainer && !inCI) {
         const interfaces = getLocalIps();
         if (interfaces != null) {
             interfaces.forEach(interfaceIp => {
