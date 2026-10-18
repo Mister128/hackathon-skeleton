@@ -23,7 +23,7 @@ createServer((request, response) => {
     if (request.method === 'GET' && request.url === "/health") {
         response.setHeader('Content-Type', 'application/json');
         const data = {
-            "ok": false,
+            "ok": true,
             "time": new Date(Date.now()).toISOString()
         }
         response.end(JSON.stringify(data));
