@@ -27,11 +27,23 @@ jobs:
         - run: npm ci
           working-directory: backend
         
-        - run: |
+        - name: Start server and check /health contract
+          run: |
+            SITE="http://127.0.0.1:$PORT/health"
+
             npm start > server.log 2>&1 & 
             SERVER_PID=$!
             sleep 5s
-            curl -f http://127.0.0.1:$PORT/health | grep '"ok":true'
+
+            curl -sS $SITE | grep -q '"ok":true' 
+            
+            curl -sS -D - -o /dev/null "$SITE" | grep -qi 'content-type: *application/json'
+            
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE")
+            if [ "$code" != "200" ]; then
+              echo "health returned $code"
+              exit 1
+            fi
             kill $SERVER_PID
           working-directory: backend
         
@@ -56,7 +68,8 @@ jobs:
             node --version
             npm --version
 
-        - run: | 
+        - name: Build
+          run: | 
             npm ci
             npm run build
           working-directory: frontend
@@ -67,3 +80,13 @@ jobs:
             name: frontend-dist
             path: frontend/dist
             if-no-files-found: error
+          
+        - name: Forbid absolute backend URL in bundle
+          run: |
+            if grep -Erq 'http://(localhost|127\.0\.0\.1):8080' frontend/dist; then
+              echo "ERROR: absolute backend URL in bundle (breaks prod + needs CORS)"
+              grep -Erno 'http://(localhost|127\.0\.0\.1):8080' frontend/dist
+              exit 1
+            fi
+            echo "PASS: No absolute localhost address."
+
