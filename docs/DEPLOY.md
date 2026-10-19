@@ -1,46 +1,92 @@
-# Деплой
+<!-- docs/DEPLOY.md -->
+# Деплой и запуск
 
 ## Вариант 1: ноутбук (демо на площадке)
-Сервер - моя машина, доступ команды - по LAN, наружу - через туннель.
+Сервер - одна из машин команды, доступ - LAN, наружу - туннель.
 
-### Подготовка
+### Подготовка (дома, до выезда)
 - [ ] Docker Desktop + WSL2, `docker version` отвечает
-- [ ] `docker compose build` прошёл полностью (образы в кэше)
-- [ ] `CLOUDPUB_TOKEN` в `.env`, проверен в день выезда
-- [ ] сон по крышке и по таймеру выключен; ноут на питании
-- [ ] бэкап плана Б: видео демо от @Vireist лежит на флешке и в чате
+- [ ] `docker compose build` прошёл полностью (образы в локальном кэше: на
+      площадке интернет нужен только для туннеля, не для сборки)
+- [ ] `.env` в корне: `BACKEND_PORT=8080`, `CLOUDPUB_TOKEN` - свежий, проверен
+      в день выезда
+- [ ] `docker compose ps` показывает `(healthy)` у backend **и** web
+- [ ] сон по крышке и по таймеру выключен, ноут на питании
+- [ ] план Б: видео демо от QA лежит на флешке и в чате
 
 ### Запуск
 ```bash
-cp .env.example .env    # вписать CLOUDPUB_TOKEN
+cp .env.example .env       # вписать CLOUDPUB_TOKEN
+docker compose config      # валидация + unset-переменные (токен замазать!)
 docker compose up -d --build
-docker compose ps       # backend (healthy)
+docker compose ps
 docker compose logs backend
-docker compose logs tunnel
+docker compose logs tunnel # публичный URL для жюри
 ```
-Публичный URL - из `logs tunnel`. Проверить на телефоне **через мобильный
-интернет**, не через тот же Wi-Fi.
+Проверки по порядку (каждая следующая имеет смысл только если предыдущая ок):
+```bash
+docker compose exec web nginx -t
+curl http://localhost:8081/          # HTML от nginx
+curl http://localhost:8081/health    # JSON через nginx - интеграция фронта и бэка
+```
+Публичный URL проверить на телефоне **через мобильный интернет**, не через
+ту же сеть Wi-Fi.
 
-### LAN-вариант (без интернета)
-`ipconfig` → IP; сообщить команде одним сообщением в чат.
-Доступ: `http://<IP>:8080/status`
+### Стоп
+```bash
+docker compose stop   # пауза
+docker compose down   # стоп
+# down -v - только когда точно нужно сжечь состояние агента и получить новый URL
+```
 
 ## Вариант 2: VPS
-Отличается двумя вещами: добавляется `web` (nginx) и туннель смотрит на него.
-Файл: `docker-compose.vps.yml`, запуск с двумя `-f`.
+Тот же стек, отличия три:
+- `ports` у web: `80:80` вместо отладочного `8081:80` (или убрать публикацию
+  совсем, если наружу смотрит только туннель)
+- `BACKEND_PORT` в `.env` и `proxy_pass http://backend:8080` в
+  `frontend/nginx.conf` должны по-прежнему совпадать
+- туннель -> `web:80`: один origin, CORS не нужен, `/status` доступен по
+  публичному адресу
 
+Проверка после деплоя:
 ```bash
-cp .env.example .env      # CLOUDPUB_TOKEN
-docker compose -f docker-compose.yml -f docker-compose.vps.yml up -d --build # проверить бы эту строку
-docker compose ps
-curl -I http://localhost/          # web отвечает
-curl http://localhost/health        # nginx проксирует на бэкенд
+curl -I http://localhost/      # HTML, 200
+curl http://localhost/health   # JSON
 ```
 
-## Куда что кладётся
-| Где                          | Что читает                             |
-| ---------------------------- | -------------------------------------- |
-| `.env` рядом с `compose.yml` | compose, для `${CLOUDPUB_TOKEN}`       |
-| `backend/.env`               | Node локально (`--env-file-if-exists`) |
-| `frontend/.env`              | Vite (только `VITE_*`)                 |
-| `environment:` в compose     | контейнеры (BIND-значения)             |
+## Почему локальный показ на площадке - не docker-первый
+- сборка образа тянет базовые образы из интернета: ваш главный риск (плохой
+  интернет) docker не снимает, а добавляет
+- Docker Desktop требует WSL2 - на одолженном ноуте это установка на час
+- docker-сеть - дополнительный слой поверх NAT/Wi-Fi, который копают в 2 ночи
+
+Docker = про VPS и про одна команда. Голый Node
+(`npm ci && npm start`) = про площадку без интернета. Он тоже проверен: это
+тот же контракт `/health` и тот же `PORT` из `backend/.env`.
+
+## Куда что кладётся (четыре разных env-файла)
+| Где                                 | Кто читает     | Зачем                                  |
+| ----------------------------------- | -------------- | -------------------------------------- |
+| `.env` рядом с `docker-compose.yml` | docker compose | `${BACKEND_PORT}`, `${CLOUDPUB_TOKEN}` |
+| `backend/.env`                      | Node локально  | `PORT`                                 |
+| `frontend/.env`                     | vite           | `APP_PORT` (и будущие `VITE_*`)        |
+| `environment:` в compose            | контейнеры     | значения сервисов вместо файлов        |
+
+В образы `.env` не попадает (`**/.env` в `.dockerignore`). Токен в git - вечный
+секрет: `git rm --cached` не помогает (история остаётся), помогает только
+перевыпуск токена в дашборде cloudpub.
+
+## За 15 минут до сцены (один человек, по списку)
+- [ ] `curl http://localhost:8081/health` -> `{"ok":true,...}`
+- [ ] `/status` открывается по публичному URL (тот же адрес, что жюри)
+- [ ] публичный URL открыт на телефоне через мобильный интернет
+- [ ] ноут на питании, сон выключен
+- [ ] видео-бэкап воспроизводится с этой машины
+- [ ] кто показывает экран - решено вслух
+
+## План Б по возрастанию надёжности
+1. показ на экране хоста (туннель не нужен)
+2. LAN: `http://<IP>:8081` в docker или `http://<IP>:8080/status` голым Node;
+   при изолированном гостевом Wi-Fi - hotspot от одной машины
+3. туннель (требует интернет и 443 наружу: `curl -I https://api.cloudflare.com`)
+4. видео от QA
