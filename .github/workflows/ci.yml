@@ -1,92 +1,161 @@
-name: backend and frontend life
+name: CI
 
 on:
-    push:
-        branches: [ main, master ]
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
 
-    pull_request: 
-        branches: [ main, master ]
-    
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    backend:
-        runs-on: ubuntu-latest
-        steps:
-        - name: Checkout repo
-          uses: actions/checkout@v6
-        
-        - name: Use Node.js
-          uses: actions/setup-node@v7
-          with:
-            node-version: '26.x'
+  frontend:
+    name: Frontend lint and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-        - run: | 
-            node --version
-            npm --version
-        
-        - run: npm ci
-          working-directory: backend
-        
-        - name: Start server and check /health contract
-          run: |
-            SITE="http://127.0.0.1:$PORT/health"
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.x
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-            npm start > server.log 2>&1 & 
-            SERVER_PID=$!
-            sleep 5s
+      - name: Install dependencies
+        run: npm ci
 
-            curl -sS $SITE | grep -q '"ok":true' 
-            
-            curl -sS -D - -o /dev/null "$SITE" | grep -qi 'content-type: *application/json'
-            
-            code=$(curl -s -o /dev/null -w '%{http_code}' "$SITE")
-            if [ "$code" != "200" ]; then
-              echo "health returned $code"
-              exit 1
+      - name: Lint
+        run: npm run lint
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Ensure frontend bundle does not hardcode localhost backend URL
+        working-directory: .
+        run: |
+          if grep -Erq 'http://(localhost|127\.0\.0\.1):8080' frontend/dist; then
+            echo "ERROR: hardcoded localhost backend URL found in frontend/dist"
+            grep -Erno 'http://(localhost|127\.0\.0\.1):8080' frontend/dist
+            exit 1
+          fi
+          echo "PASS: no hardcoded localhost backend URL found"
+
+  backend:
+    name: Backend health smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      PORT: "8080"
+      CI: "true"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 26.x
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start server and verify /health
+        run: |
+          set -euo pipefail
+          node server.js > server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+
+          ready=0
+          for attempt in $(seq 1 20); do
+            if curl --silent --show-error --fail \
+              --dump-header headers.txt \
+              --output body.json \
+              "http://127.0.0.1:${PORT}/health"; then
+              ready=1
+              break
             fi
-            kill $SERVER_PID
-          working-directory: backend
-        
-        - if: failure()
-          run: cat backend/server.log
+            sleep 1
+          done
 
-        env:
-          PORT: 8080
- 
-    frontend:
-      runs-on: ubuntu-latest
-      steps:
-        - name: Checkout repo
-          uses: actions/checkout@v6
-        
-        - name: Use Node.js
-          uses: actions/setup-node@v7
-          with:
-            node-version: '26.x'
+          if [ "$ready" -ne 1 ]; then
+            echo "Backend did not become healthy in time"
+            cat server.log
+            exit 1
+          fi
 
-        - run: | 
-            node --version
-            npm --version
+          grep -q '"ok":true' body.json
+          grep -Eqi '^content-type:[[:space:]]*application/json' headers.txt
+          cat body.json
 
-        - name: Build
-          run: | 
-            npm ci
-            npm run build
-          working-directory: frontend
-        
-        - name: Upload
-          uses: actions/upload-artifact@v6
-          with:
-            name: frontend-dist
-            path: frontend/dist
-            if-no-files-found: error
-          
-        - name: Forbid absolute backend URL in bundle
-          run: |
-            if grep -Erq 'http://(localhost|127\.0\.0\.1):8080' frontend/dist; then
-              echo "ERROR: absolute backend URL in bundle (breaks prod + needs CORS)"
-              grep -Erno 'http://(localhost|127\.0\.0\.1):8080' frontend/dist
-              exit 1
+      - name: Print backend logs on failure
+        if: failure()
+        run: cat server.log
+
+  docker-compose-smoke:
+    name: Build and smoke-test Compose stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BACKEND_PORT: "8080"
+      # Compose requires a value for interpolation, but this job never starts the tunnel.
+      CLOUDPUB_TOKEN: "ci-placeholder-not-a-real-token"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate Compose configuration
+        run: docker compose config --quiet
+
+      - name: Build application images
+        run: docker compose build backend web
+
+      - name: Start services and test routes through nginx
+        run: |
+          set -euo pipefail
+          cleanup() {
+            docker compose down --volumes --remove-orphans
+          }
+          trap cleanup EXIT
+
+          docker compose up -d backend web
+
+          ready=0
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail \
+              --dump-header health-headers.txt \
+              --output health.json \
+              http://127.0.0.1:8081/health; then
+              ready=1
+              break
             fi
-            echo "PASS: No absolute localhost address."
+            sleep 2
+          done
 
+          if [ "$ready" -ne 1 ]; then
+            docker compose ps
+            docker compose logs backend web
+            echo "Compose stack did not become ready"
+            exit 1
+          fi
+
+          grep -q '"ok":true' health.json
+          grep -Eqi '^content-type:[[:space:]]*application/json' health-headers.txt
+          curl --silent --show-error --fail --head http://127.0.0.1:8081/ >/dev/null
+          docker compose ps
